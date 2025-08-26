@@ -1,0 +1,398 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Organizations and Users
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  memberships Membership[]
+  units       Unit[]
+  users       User[]
+
+  @@map("organizations")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String?
+  name      String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  memberships Membership[]
+  lessons     Lesson[]
+  comments    Comment[]
+  approvals   Approval[]
+  exports     Export[]
+
+  @@map("users")
+}
+
+model Membership {
+  id             String         @id @default(cuid())
+  role           MembershipRole
+  organizationId String
+  userId         String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("memberships")
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  TEACHER
+  COACH
+  LEAD
+  VIEWER
+}
+
+// Units and Lessons
+model Unit {
+  id             String   @id @default(cuid())
+  title          String
+  description    String?
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lessons      Lesson[]
+
+  @@map("units")
+}
+
+model Lesson {
+  id          String       @id @default(cuid())
+  title       String
+  grade       Int
+  subject     String
+  duration    Int // minutes
+  status      LessonStatus @default(DRAFT)
+  unitId      String?
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  unit       Unit?        @relation(fields: [unitId], references: [id])
+  createdBy  User         @relation(fields: [createdById], references: [id])
+  objectives Objective[]
+  sections   Section[]
+  vocab      Vocabulary[]
+  misconceptions Misconception[]
+  quizzes    Quiz[]
+  activities Activity[]
+  inserts    Insert[]
+  udlFlags   UDLFlag[]
+  comments   Comment[]
+  approvals  Approval[]
+  exports    Export[]
+
+  @@map("lessons")
+}
+
+enum LessonStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  PUBLISHED
+}
+
+// Lesson Content
+model Objective {
+  id          String @id @default(cuid())
+  description String
+  lessonId    String
+  order       Int
+
+  // Relations
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("objectives")
+}
+
+model Section {
+  id          String @id @default(cuid())
+  title       String
+  description String?
+  duration    Int // minutes
+  order       Int
+  lessonId    String
+
+  // Relations
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("sections")
+}
+
+model Vocabulary {
+  id          String @id @default(cuid())
+  term        String
+  definition  String
+  lessonId    String
+
+  // Relations
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("vocabulary")
+}
+
+model Misconception {
+  id          String @id @default(cuid())
+  description String
+  lessonId    String
+
+  // Relations
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("misconceptions")
+}
+
+// Assessment
+model Quiz {
+  id          String @id @default(cuid())
+  title       String
+  description String?
+  lessonId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  items  QuizItem[]
+
+  @@map("quizzes")
+}
+
+model QuizItem {
+  id         String      @id @default(cuid())
+  type       QuizItemType
+  question   String
+  options    String[]    // For MCQ/MS
+  answer     String
+  points     Int
+  difficulty ItemDifficulty
+  quizId     String
+  order      Int
+
+  // Relations
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_items")
+}
+
+enum QuizItemType {
+  MCQ
+  MS
+  NUMERIC
+  SHORT
+  LABEL
+}
+
+enum ItemDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+// Activities
+model Activity {
+  id          String @id @default(cuid())
+  title       String
+  description String
+  materials   String[]
+  safetyNotes String[]
+  steps       String[]
+  duration    Int // minutes
+  lessonId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
+
+// Cross-discipline Inserts
+model Insert {
+  id          String      @id @default(cuid())
+  type        InsertType
+  title       String
+  content     String // JSON content
+  lessonId    String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("inserts")
+}
+
+enum InsertType {
+  HISTORY
+  MATH
+  SCIENCE
+}
+
+// UDL and Approvals
+model UDLFlag {
+  id          String     @id @default(cuid())
+  type        UDLType
+  severity    UDLSeverity
+  description String
+  suggestion  String?
+  lessonId    String
+  createdAt   DateTime   @default(now())
+
+  // Relations
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("udl_flags")
+}
+
+enum UDLType {
+  REPRESENTATION
+  ACTION_EXPRESSION
+  ENGAGEMENT
+}
+
+enum UDLSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Approval {
+  id          String        @id @default(cuid())
+  type        ApprovalType
+  status      ApprovalStatus @default(PENDING)
+  comment     String?
+  lessonId    String
+  approverId  String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  approver User   @relation(fields: [approverId], references: [id])
+
+  @@map("approvals")
+}
+
+enum ApprovalType {
+  COACH
+  LEAD
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Collaboration
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  lessonId  String
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@map("comments")
+}
+
+// Exports
+model Export {
+  id          String      @id @default(cuid())
+  type        ExportType
+  status      ExportStatus @default(PENDING)
+  url         String?
+  lessonId    String
+  createdById String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  lesson    Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  createdBy User   @relation(fields: [createdById], references: [id])
+
+  @@map("exports")
+}
+
+enum ExportType {
+  PACK_PDF
+  SLIDES_PDF
+  SLIDES_MDX
+  WORKSHEETS_PDF
+  WORKSHEETS_DOCX
+  QUIZ_PDF
+  QUIZ_CSV
+  GRADEBOOK_CSV
+  BUNDLE_ZIP
+}
+
+enum ExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// Reusable Snippets
+model Snippet {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  type        String
+  tags        String[]
+  embedding   Float[]  // pgvector
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("snippets")
+}
+
+// Audit Log
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  entityType  String
+  entityId    String
+  userId      String?
+  metadata    String   // JSON
+  createdAt   DateTime @default(now())
+
+  @@map("audit_log")
+}

@@ -1,0 +1,35 @@
+{
+  "name": "ai-teachers-lounge",
+  "version": "1.0.0",
+  "description": "AI-powered lesson planning and generation platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/frontend",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "type-check": "npm run type-check --workspaces",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed",
+    "e2e:debug": "playwright test --debug",
+    "e2e:install": "playwright install",
+    "e2e:report": "playwright show-report",
+    "test:load": "playwright test tests/e2e/load-testing.spec.ts",
+    "test:chaos": "playwright test tests/e2e/chaos-testing.spec.ts",
+    "test:security": "playwright test tests/e2e/security-testing.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
